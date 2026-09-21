@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Inventaris Spek Komputer</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="logo">💻</div>
+    <h1>Inventaris Spek Komputer <small>DPR · Manajemen Perangkat</small></h1>
+    <span id="count-chip" class="badge plan" style="display:none"></span>
+  </header>
+
+  <!-- ================= DASHBOARD VIEW ================= -->
+  <section id="dashboard" class="view">
+    <div class="stats">
+      <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">Total</div></div>
+      <div class="stat"><div class="num" id="statDone">0</div><div class="lbl">Complated</div></div>
+      <div class="stat"><div class="num" id="statPending">0</div><div class="lbl">Pending</div></div>
+    </div>
+
+    <div class="controls">
+      <div class="search-row">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2"/><line x1="21" y1="21" x2="16.5" y2="16.5" stroke-width="2"/></svg>
+          <input id="search" type="text" placeholder="Cari Kode / Nama device...">
+        </div>
+        <button class="btn-primary" id="btnImport" title="Muati ulang data dari Excel">
+          <span class="plus">⇅</span>
+        </button>
+      </div>
+      <div class="filter-row">
+        <select id="filterPlan">
+          <option value="">Semua PLAN</option>
+        </select>
+        <select id="filterBagian">
+          <option value="">Semua Bagian</option>
+        </select>
+        <select id="filterStatus">
+          <option value="">Semua Status</option>
+          <option value="Complated">Complated</option>
+          <option value="Pending">Pending</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="loading" class="spinner"></div>
+    <div id="list" class="list"></div>
+    <div id="empty" class="empty" style="display:none">
+      <div class="big">🔍</div>
+      <p>Tidak ada data yang cocok.</p>
+    </div>
+  </section>
+
+  <!-- ================= DETAIL VIEW ================= -->
+  <section id="detail" class="view" style="display:none">
+    <div class="detail-header">
+      <button class="back-btn" id="btnBack">←</button>
+      <h2>Detail Perangkat</h2>
+    </div>
+    <div id="detailContent" class="detail-body"></div>
+  </section>
+
+  <!-- FAB Tambah -->
+  <button class="fab" id="fabAdd" title="Tambah data">+</button>
+
+  <!-- ================= FORM MODAL ================= -->
+  <div class="modal-overlay" id="formModal">
+    <div class="modal sheet-mobile">
+      <div class="modal-head">
+        <h3 id="formTitle">Tambah Data</h3>
+        <button class="modal-close" id="btnCloseForm">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Kode Inventaris</label>
+          <input id="fKode" placeholder="K-XXX (kosong = auto)">
+        </div>
+        <div class="field">
+          <label>Tanggal Evaluasi</label>
+          <input id="fTanggal" type="date">
+        </div>
+        <div class="field">
+          <label>PLAN</label>
+          <input id="fPlan" placeholder="cth: PLAN 1">
+        </div>
+        <div class="field">
+          <label>Bagian</label>
+          <input id="fBagian" placeholder="cth: IT">
+        </div>
+        <div class="field">
+          <label>Device Name</label>
+          <input id="fDeviceName" placeholder="Nama device / user">
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <input id="fCategory" value="Komputer" placeholder="Komputer">
+        </div>
+        <div class="field">
+          <label>Spesifikasi Prosesor</label>
+          <textarea id="fProsesor" placeholder="cth: Intel Core i5-11400"></textarea>
+        </div>
+        <div class="field">
+          <label>Motherboard</label>
+          <input id="fMotherboard" placeholder="cth: H81M-K">
+        </div>
+        <div class="field">
+          <label>RAM</label>
+          <input id="fRam" placeholder="cth: 16 GBytes">
+        </div>
+        <div class="field">
+          <label>Storage</label>
+          <textarea id="fStorage" placeholder="Detail storage / disk"></textarea>
+        </div>
+        <div class="field">
+          <label>OS Windows</label>
+          <textarea id="fOs" placeholder="cth: Microsoft Windows 10 Pro"></textarea>
+        </div>
+        <div class="field">
+          <label>Goal</label>
+          <input id="fGoal" placeholder="cth: Tercapai">
+        </div>
+        <div class="field">
+          <label>Perlu Upgrade - Ganti</label>
+          <input id="fGanti" placeholder="Yes / No">
+        </div>
+        <div class="field">
+          <label>Perlu Upgrade - Repair</label>
+          <input id="fRepair" placeholder="Yes / No">
+        </div>
+        <div class="field">
+          <label>Status Upgrade</label>
+          <input id="fStatus" placeholder="cth: Complated / Pending">
+        </div>
+        <div class="field">
+          <label>Keterangan</label>
+          <textarea id="fKeterangan" placeholder="Catatan"></textarea>
+        </div>
+        <div class="field">
+          <label>Status Stiker</label>
+          <input id="fStiker" placeholder="cth: Print / Sudah / -">
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-cancel" id="btnFormCancel">Batal</button>
+          <button class="btn btn-primary" id="btnFormSave">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CONFIRM DELETE MODAL ================= -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal sheet-mobile">
+      <div class="modal-head"><h3>Konfirmasi</h3><button class="modal-close" id="btnCloseConfirm">✕</button></div>
+      <div class="confirm-box">
+        <div class="icon">🗑️</div>
+        <div id="confirmText" style="font-weight:700;font-size:16px"></div>
+        <p>Data akan dihapus permanen. Lanjutkan?</p>
+        <div class="confirm-actions">
+          <button class="btn btn-cancel" id="btnConfirmNo">Batal</button>
+          <button class="btn btn-del" id="btnConfirmYes">Ya, Hapus</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= INSTALL BANNER ================= -->
+  <div class="install-banner" id="installBanner">
+    <p>Install aplikasi ini agar mudah diakses di HP Anda.</p>
+    <button id="btnInstall">Install</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

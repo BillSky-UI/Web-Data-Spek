@@ -1,0 +1,23 @@
+{
+  "name": "spek-komputer-dpr",
+  "version": "1.0.0",
+  "description": "PWA manajemen inventaris spesifikasi komputer (DPR)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "xlsx": "^0.18.5"
+  },
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "devDependencies": {},
+  "keywords": [],
+  "type": "commonjs"
+}
