@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:typed_data';
 
 import '../database/db_helper.dart';
 import '../models/device.dart';
@@ -107,6 +109,16 @@ class _DeviceListPageState extends State<DeviceListPage> {
               context,
               MaterialPageRoute(builder: (_) => const ScanPage()),
             ),
+          ),
+                    IconButton(
+            tooltip: 'Impor Excel (xlsx)',
+            icon: const Icon(Icons.upload_file),
+            onPressed: () => _importExcel(context),
+          ),
+          IconButton(
+            tooltip: 'Impor dari Excel',
+            icon: const Icon(Icons.upload_file),
+            onPressed: () => _importExcel(context),
           ),
           AppPopupMenu(settings: widget.settings),
         ],
@@ -272,6 +284,39 @@ class _DeviceListPageState extends State<DeviceListPage> {
       ),
     );
   }
+
+  /// Impor file .xlsx -> tulis ke cloud Supabase (devices) + cache lokal
+  /// sehingga WEB & APK memakai data impor ini sebagai default.
+  Future<void> _importExcel(BuildContext context) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        withData: true,
+      );
+      final file = result?.files.single;
+      if (file == null || file.bytes == null) return;
+      final c = context.appColors;
+      final count = await DbHelper.instance.importExcelFile(file.bytes!);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          backgroundColor: c.accent,
+          content: Text(count > 0
+              ? 'Impor Excel berhasil: $count perangkat tersimpan.'
+              : 'File Excel kosong / kolom tidak dikenali.'),
+        ));
+      await _load();
+    } catch (e) {
+      debugPrintFallback('Gagal impor Excel: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal impor Excel: $e')));
+    }
+  }
+
+  int _sha1flag = 0;
 
   Widget _buildList(BuildContext context) {
     final c = context.appColors;

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:excel/excel.dart' as excel_pkg;
 import 'package:flutter/foundation.dart';
@@ -600,6 +600,130 @@ class DbHelper extends ChangeNotifier {
   //  PARSING EXCEL (dipakai seeding — tidak menyentuh cloud)
   // ============================================================
 
+  // ============================================================
+  //  IMPORT FILE EXCEL (dipilih user) — web & apk, data SATU cloud
+  //  1) baca byte .xlsx -> List<Device>
+  //  2) tulis ke cloud (Supabase devices) bila terhubung
+  //  3) upsert cache lokal -> sinkron di APK & web
+  // ============================================================
+
+  Future<List<Device>> parseExcelBytes(Uint8List bytes) async {
+    if (bytes.isEmpty) return const [];
+    try {
+      final excel = excel_pkg.Excel.decodeBytes(bytes);
+      final sheetName = excel.tables.keys.firstWhere(
+        (k) => k.toLowerCase() == _sheetName.toLowerCase(),
+        orElse: () => excel.tables.keys.first,
+      );
+      final sheet = excel.tables[sheetName];
+      if (sheet == null) return const [];
+      final rows = sheet.rows;
+      if (rows.isEmpty) return const [];
+
+      final header = rows.first
+          .map((c) =>
+              _cellString(c).toLowerCase().replaceAll(RegExp(r'\s+'), ' '))
+          .toList();
+
+      int findCol(String sub) {
+        final parts = sub.split(' ');
+        return header.indexWhere((h) => parts.every((p) => h.contains(p)));
+      }
+
+      final c = <String, int>{};
+      final map = {
+        'tanggalEvaluasi': 'tanggal evaluasi',
+        'kodeInventaris': 'kode inventaris',
+        'plan': 'plan',
+        'bagian': 'bagian',
+        'deviceName': 'device name',
+        'category': 'category',
+        'prosesor': 'prosesor',
+        'motherboard': 'motherboard',
+        'ram': 'ram',
+        'storage': 'storage',
+        'osWindows': 'os windows',
+        'goal': 'goal',
+        'ganti': 'perlu upgrade ganti',
+        'repair': 'perlu upgrade repair',
+        'statusUpgrade': 'status upgrade',
+        'keterangan': 'keterangan',
+        'statusStiker': 'status stiker',
+      };
+      map.forEach((key, sub) {
+        final i = findCol(sub as String);
+        if (i >= 0) c[key as String] = i;
+      });
+
+      String val(int ci, int ri) {
+        if (ci < 0 || ci >= c.length || ri >= rows.length) return '';
+        final row = rows[ri];
+        if (ci >= row.length) return '';
+        return _cellString(row[ci]);
+      }
+
+      final result = <Device>[];
+      for (int ri = 1; ri < rows.length; ri++) {
+        final row = rows[ri];
+        final isEmptyRow = row.every((cl) => _cellString(cl).trim().isEmpty);
+        if (isEmptyRow) continue;
+        result.add(Device(
+          kodeInventaris: val(c['kodeInventaris']!, ri),
+          tanggalEvaluasi: val(c['tanggalEvaluasi']! , ri),
+          plan: val(c['plan']!, ri),
+          bagian: val(c['bagian']!, ri),
+          deviceName: val(c['deviceName']!, ri),
+          category: val(c['category']!, ri),
+          prosesor: val(c['prosesor']!, ri),
+          motherboard: val(c['motherboard']!, ri),
+          ram: val(c['ram']!, ri),
+          storage: val(c['storage']!, ri),
+          osWindows: val(c['osWindows']!, ri),
+          goal: val(c['goal']!, ri),
+          perluUpgradeGanti: val(c['ganti']!, ri),
+          perluUpgradeRepair: val(c['repair']! , ri),
+          statusUpgrade: val(c['statusUpgrade']!, ri),
+          keterangan: val(c['keterangan']!, ri),
+          statusStiker: val(c['statusStiker']!, ri),
+        ));
+      }
+      return result;
+    } catch (e) {
+      debugPrintFallback('Gagal membaca Excel impor: $e');
+      return const [];
+    }
+  }
+
+  /// Impor file .xlsx pilihan user ke cloud (Supabase) + cache lokal.
+  Future<int> importExcelFile(Uint8List bytes) async {
+    List<Device> data;
+    try {
+      data = await parseExcelBytes(bytes);
+    } catch (e) {
+      debugPrintFallback('Gagal parse Excel impor: $e');
+      return 0;
+    }
+    if (data.isEmpty) {
+      debugPrintFallback('Excel impor kosong / kolom tidak dikenali.');
+      return 0;
+    }
+    if (_client != null) {
+      try {
+        await _client!.from(_tDevices).upsert(
+              data.map((d) => ({...d.toMap()}..remove('id'))).toList(),
+              onConflict: 'kode_inventaris',
+            );
+      } catch (e) {
+        debugPrintFallback('Cloud impor gagal, simpan lokal saja: $e');
+      }
+    }
+    for (final d in data) {
+      _upsertLocal(d);
+    }
+    await _ensureMastersFromDevices();
+    notifyListeners();
+    return data.length;
+  }
   Future<List<Device>> loadExcelSeed() async {
     final ByteData b = await rootBundle.load(_assetExcel);
     final Uint8List bytes = b.buffer.asUint8List(
